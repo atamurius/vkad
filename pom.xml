@@ -22,7 +22,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>ua.atamurius.vk.music.ui.Main</mainClass>
+                            <mainClass>ua.atamurius.vk.music.Main</mainClass>
                         </manifest>
                     </archive>
                 </configuration>

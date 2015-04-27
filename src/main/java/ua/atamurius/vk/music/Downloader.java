@@ -5,10 +5,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.*;
 
 import javax.swing.BoundedRangeModel;
 import javax.swing.DefaultBoundedRangeModel;
@@ -25,7 +22,7 @@ public class Downloader {
     }
 
     private final ExecutorService executor = Executors.newFixedThreadPool(5);
-    private final Collection<Future<?>> tasks = new ArrayList<>();
+    private final Collection<Future<?>> tasks = new ConcurrentSkipListSet<>();
 
     public void download(final String srcUrl, final File dstFile, final ProgressListener listener) {
         tasks.add(executor.submit(new Runnable() {
@@ -40,12 +37,12 @@ public class Downloader {
                     try (InputStream input = conn.getInputStream();
                          OutputStream output = new BufferedOutputStream(new FileOutputStream(dstFile))) {
 
+                        System.out.printf("download '%s' started%n", dstFile.getName());
                         int lastRead;
                         byte[] buffer = new byte[BUFFER_SIZE];
                         while (!currentThread().isInterrupted() && (lastRead = input.read(buffer)) > 0) {
                             output.write(buffer, 0, lastRead);
                             finished += lastRead;
-                            System.out.printf("downloaded '%s' %d%%%n", dstFile.getName(), finished*100/total);
                             listener.progressChanged(finished, total);
                         }
                     } finally {
@@ -57,7 +54,7 @@ public class Downloader {
                     System.err.printf("download '%s' failed%n", dstFile.getName());
                     e.printStackTrace();
                 }
-                System.err.printf("download '%s' finished at %d/%d%n", dstFile.getName(), finished, total);
+                System.out.printf("download '%s' finished at %d/%d%n", dstFile.getName(), finished, total);
                 listener.finished(finished == total);
             }
         }));
@@ -73,8 +70,8 @@ public class Downloader {
     }
 
     public void cancel() {
-        for (Iterator<Future<?>> futures = tasks.iterator(); futures.hasNext(); ) {
-            futures.next().cancel(true);
+        for (Future<?> future: tasks) {
+            future.cancel(true);
         }
         int active;
         do {

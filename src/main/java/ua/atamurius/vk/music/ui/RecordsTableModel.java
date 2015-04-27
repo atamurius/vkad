@@ -34,7 +34,7 @@ public class RecordsTableModel extends AbstractTableModel {
     }
 
     public int getColumnCount() {
-        return 3;
+        return 4;
     }
 
     public String getColumnName(int columnIndex) {
@@ -42,12 +42,20 @@ public class RecordsTableModel extends AbstractTableModel {
         case 0: return l.l("table.column.no");
         case 1: return l.l("table.column.author");
         case 2: return l.l("table.column.title");
+        case 3: return l.l("table.column.progress");
         }
         throw new IndexOutOfBoundsException(columnIndex +" not in [0,1]");
     }
 
     public Class<?> getColumnClass(int columnIndex) {
-        return columnIndex == 0 ? Integer.class : String.class;
+        switch (columnIndex) {
+            case 0: return Integer.class;
+            case 1:
+            case 2: return String.class;
+            case 3: return Records.Item.class;
+            default:
+                throw new IndexOutOfBoundsException(columnIndex +" not in [0,3]");
+        }
     }
 
     public Object getValueAt(int rowIndex, int columnIndex) {
@@ -55,13 +63,15 @@ public class RecordsTableModel extends AbstractTableModel {
         case 0: return (rowIndex + 1);
         case 1: return items.get(rowIndex).getAuthor();
         case 2: return items.get(rowIndex).getTitle();
+        case 3: return items.get(rowIndex);
+        default:
+            throw new IndexOutOfBoundsException(columnIndex +" not in [0,3]");
         }
-        throw new IndexOutOfBoundsException(columnIndex +" not in [0,1]");
     }
     
     @Override
     public boolean isCellEditable(int rowIndex, int columnIndex) {
-        return isEditable && columnIndex > 0;
+        return isEditable && columnIndex > 0 && columnIndex < 3;
     }
     
     @Override

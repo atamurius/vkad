@@ -10,6 +10,7 @@ public class Records extends Observable implements Iterable<Records.Item> {
         private String title;
         private String author;
         private String url;
+        private Integer progress;
 
         private Item(String title, String author, String url) {
             this.title = title;
@@ -41,8 +42,21 @@ public class Records extends Observable implements Iterable<Records.Item> {
 
         public String getFileName() {
             int p = url.lastIndexOf('.');
-            String ext = (p == -1) ? ".mp3" : url.substring(p);
+            int e = url.lastIndexOf('?');
+            String ext = (p == -1) ? ".mp3" : url.substring(p, e == -1 ? url.length() : e);
             return (author + " - " + title + ext).replaceAll("[\u0000-\u001F\\*/:<>\\?\\\\|]+", "");
+        }
+
+        /**
+         * @return null if not started, 0-100 for download progress, -1 if failed, 100 if success
+         */
+        public Integer getProgress() {
+            return progress;
+        }
+
+        public void setProgress(Integer progress) {
+            this.progress = progress;
+            setChanged();
         }
 
         @Override

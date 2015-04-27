@@ -10,6 +10,8 @@ import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Collection;
 
 import static java.awt.BorderLayout.*;
 import static java.awt.FlowLayout.LEADING;
@@ -75,10 +77,7 @@ public class MainFrame {
                        addActionListener(new ActionListener() {
                            @Override
                            public void actionPerformed(ActionEvent e) {
-                               for (int i : table.getSelectedRows()) {
-                                   records.remove(i);
-                               }
-                               records.notifyObservers();
+                               removeSelected();
                            }
                        });
                    }});
@@ -94,12 +93,16 @@ public class MainFrame {
             }},
             PAGE_START);
 
-            add(new JScrollPane(table = new JTable(new RecordsTableModel(records)) {{
+            add(new JScrollPane(table = new JTable() {{
+                setModel(new RecordsTableModel(records));
+                setDefaultRenderer(Records.Item.class, new ItemProgressRenderer());
+                setGridColor(Color.lightGray);
+                setIntercellSpacing(new Dimension(7,3));
                 setAutoCreateRowSorter(true);
                 getColumnModel().getColumn(0).setMaxWidth(30);
             }}));
 
-            add(progress = new JProgressBar(), PAGE_END);
+            add(progress = new JProgressBar(0, records.size()), PAGE_END);
 
             addWindowListener(new WindowAdapter() {
                 public void windowClosing(WindowEvent e) {
@@ -111,6 +114,18 @@ public class MainFrame {
         setInProgress(false);
     }
 
+    private void removeSelected() {/*
+        int inds =
+        for (int row: table.getSelectedRows()) {
+            items.add( records table.convertRowIndexToModel(row));
+        }
+        Arrays.so
+        for (int i : selectedRows)
+            records.remove(i);
+        records.notifyObservers();
+*/
+    }
+
     public void setInProgress(boolean inProgress) {
         btnExtract.setEnabled(! inProgress);
         btnSelectFolder.setEnabled(! inProgress);
@@ -118,7 +133,8 @@ public class MainFrame {
         btnRemoveSelected.setEnabled(! inProgress);
         btnStart.setEnabled(! inProgress);
         btnStop.setEnabled(inProgress);
-        ((RecordsTableModel) table.getModel()).setEditable(false);
+        ((RecordsTableModel) table.getModel()).setEditable(! inProgress);
+        progress.setValue(0);
     }
 
     public void show() {
@@ -139,6 +155,17 @@ public class MainFrame {
         if (APPROVE_OPTION == chooser.showOpenDialog(root)) {
             destination = chooser.getSelectedFile();
             lblDestination.setText(destination.getAbsolutePath());
+        }
+    }
+
+    public File getDestination() {
+        return destination;
+    }
+
+    public void increaseProgress() {
+        progress.setValue( progress.getValue() + 1 );
+        if (progress.getValue() == progress.getMaximum()) {
+            setInProgress(false);
         }
     }
 }
