@@ -3,3 +3,7 @@
 2. Scroll to see all of them (they are lazy loading)
 3. Save page as HTML
 4. Open it in app
+
+## Configuration
+Download threads could be configured using system property
+`ua.atamurius.vk.music.Downloader.threads`

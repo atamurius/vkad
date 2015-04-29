@@ -27,8 +27,22 @@ public class Downloader {
         void finished(boolean success);
     }
 
-    private final ExecutorService executor = Executors.newFixedThreadPool(5);
-    private final Collection<Future<?>> tasks = new ConcurrentLinkedQueue<>();
+    private final ExecutorService executor = Executors.newFixedThreadPool(threadCount());
+
+    private static int threadCount() {
+        String threads = System.getProperty(Downloader.class.getName() +".threads");
+        if (threads != null) {
+            try {
+                return Integer.parseInt(threads);
+            }
+            catch (NumberFormatException e) {
+                log.error("Wrong threads number {}", threads);
+            }
+        }
+        return 10; // by default
+    }
+
+    private final Queue<Future<?>> tasks = new ConcurrentLinkedQueue<>();
 
     private final AtomicInteger tasksFinished = new AtomicInteger();
 
@@ -91,16 +105,10 @@ public class Downloader {
     }
 
     public void cancel() {
-        for (Future<?> future: tasks) {
+        for (Future<?> future : tasks) {
             future.cancel(true);
         }
-        int active;
-        do {
-            Thread.yield();
-            active = getActiveTaskCount();
-            log.debug("Active tasks: {}", active);
-        }
-        while (active > 0);
+        tasks.clear();
     }
 
     public int getFinishedTasksCount() {

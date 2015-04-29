@@ -6,10 +6,7 @@ import ua.atamurius.vk.music.Records;
 import javax.swing.*;
 import javax.swing.table.TableModel;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
+import java.awt.event.*;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -17,6 +14,7 @@ import java.util.Collection;
 
 import static java.awt.BorderLayout.*;
 import static java.awt.FlowLayout.LEADING;
+import static java.awt.event.KeyEvent.VK_DELETE;
 import static javax.swing.JFileChooser.APPROVE_OPTION;
 import static javax.swing.JFileChooser.DIRECTORIES_ONLY;
 
@@ -26,11 +24,12 @@ public class MainFrame {
     public static final String ACTION_START_DOWNLOAD = "start_download";
     public static final String ACTION_STOP_DOWNLOAD = "stop_download";
     public static final String ACTION_WINDOW_CLOSING = "window_closing";
+    public static final String ACTION_EXTRACT_WIZARD = "extract_wizard";
 
     private final I18n l = new I18n(getClass());
 
     private final JFrame root;
-    private JButton btnExtract, btnSelectFolder, btnClearTable, btnRemoveSelected, btnStart, btnStop;
+    private JButton btnExtract, btnSelectFolder, btnStart, btnStop, btnExtractWzrd;
     private JProgressBar progress;
     private JLabel lblDestination;
     private JTable table;
@@ -39,61 +38,32 @@ public class MainFrame {
     @SuppressWarnings("serial")
     public MainFrame(final Records records, final ActionListener dispatcher) {
         root = new JFrame(l.l("frame.title")) {{
-            add(new JPanel(new GridLayout(2,1)) {{
-                add(new JPanel(new FlowLayout(LEADING)) {{
-                    add(new JLabel(l.l("frame.destination")) {{
-                       setFont(getFont().deriveFont(Font.BOLD));
-                    }},
-                    LINE_START);
-                    add(lblDestination = new JLabel(destination.getAbsolutePath()) {{
-                        setFont(new Font("monospace", Font.PLAIN, getFont().getSize()));
-                    }});
-                    add(btnSelectFolder = new JButton(l.l("frame.button.select_folder")) {{
-                        setToolTipText(l.l("frame.button.select_folder.tip"));
-                        addActionListener(new ActionListener() {
-                            @Override
-                            public void actionPerformed(ActionEvent actionEvent) {
-                                selectFolder();
-                            }
-                        });
-                    }},
-                    LINE_END);
+            add(new JPanel(new FlowLayout(LEADING)) {{
+                add(new JLabel(l.l("frame.destination")) {{
+                   setFont(getFont().deriveFont(Font.BOLD));
                 }});
-                add(new JPanel(new FlowLayout(LEADING)) {{
-                   add(btnExtract = new JButton(l.l("frame.button.extract_links")) {{
-                       setToolTipText(l.l("frame.button.extract_links.tip"));
-                       setActionCommand(ACTION_EXTRACT_LINKS);
-                       addActionListener(dispatcher);
-                   }});
-                   add(btnClearTable = new JButton(l.l("frame.button.clear_table")) {{
-                       addActionListener(new ActionListener() {
-                           @Override
-                           public void actionPerformed(ActionEvent e) {
-                               records.clear();
-                               records.notifyObservers();
-                           }
-                       });
-                   }});
-                   add(btnRemoveSelected = new JButton(l.l("frame.button.remove_selected")) {{
-                       setToolTipText(l.l("frame.button.remove_selected.tip"));
-                       addActionListener(new ActionListener() {
-                           @Override
-                           public void actionPerformed(ActionEvent e) {
-                               removeSelected();
-                           }
-                       });
-                   }});
-                   add(btnStart = new JButton(l.l("frame.button.download")) {{
-                       setActionCommand(ACTION_START_DOWNLOAD);
-                       addActionListener(dispatcher);
-                   }});
-                   add(btnStop = new JButton(l.l("frame.button.stop")) {{
-                       setActionCommand(ACTION_STOP_DOWNLOAD);
-                       addActionListener(dispatcher);
-                   }});
+                add(lblDestination = new JLabel(destination.getAbsolutePath()) {{
+                    setFont(new Font("monospace", Font.PLAIN, getFont().getSize()));
                 }});
-            }},
-            PAGE_START);
+                add(btnSelectFolder = new JButton(l.l("frame.button.select_folder")) {{
+                    setToolTipText(l.l("frame.button.select_folder.tip"));
+                    addActionListener(new ActionListener() {
+                        @Override
+                        public void actionPerformed(ActionEvent actionEvent) {
+                            selectFolder();
+                        }
+                    });
+                }});
+                add(btnExtract = new JButton(l.l("frame.button.extract_links")) {{
+                    setToolTipText(l.l("frame.button.extract_links.tip"));
+                    setActionCommand(ACTION_EXTRACT_LINKS);
+                    addActionListener(dispatcher);
+                }});
+                add(btnExtractWzrd = new JButton(l.l("frame.button.extract_wizard")) {{
+                    setActionCommand(ACTION_EXTRACT_WIZARD);
+                    addActionListener(dispatcher);
+                }});
+            }}, PAGE_START);
 
             add(new JScrollPane(table = new JTable() {{
                 setModel(new RecordsTableModel(records));
@@ -101,17 +71,41 @@ public class MainFrame {
                 setGridColor(Color.lightGray);
                 setIntercellSpacing(new Dimension(7,3));
                 setAutoCreateRowSorter(true);
-                getColumnModel().getColumn(0).setMaxWidth(30);
+                getColumnModel().getColumn(0).setMaxWidth(40);
+                addKeyListener(new KeyAdapter() {
+                    @Override
+                    public void keyReleased(KeyEvent e) {
+                        if (e.getKeyCode() == VK_DELETE && ! e.isConsumed()) {
+                            if (table.isEditing()) {
+                                table.getCellEditor().cancelCellEditing();
+                            }
+                            removeSelected();
+                            e.consume();
+                        }
+                    }
+                });
             }}));
 
-            add(progress = new JProgressBar(0, records.size()), PAGE_END);
+            add(new JPanel(new BorderLayout()) {{
+                add(progress = new JProgressBar());
+                add(new JPanel() {{
+                    add(btnStart = new JButton(l.l("frame.button.download")) {{
+                        setActionCommand(ACTION_START_DOWNLOAD);
+                        addActionListener(dispatcher);
+                    }});
+                    add(btnStop = new JButton(l.l("frame.button.stop")) {{
+                        setActionCommand(ACTION_STOP_DOWNLOAD);
+                        addActionListener(dispatcher);
+                    }});
+                }}, LINE_END);
+            }}, PAGE_END);
 
             addWindowListener(new WindowAdapter() {
                 public void windowClosing(WindowEvent e) {
                     dispatcher.actionPerformed(new ActionEvent(e, 0, ACTION_WINDOW_CLOSING));
                 }
             });
-            setSize(800, 600);
+            setSize(1000, 800);
         }};
         setInProgress(false);
     }
@@ -128,20 +122,21 @@ public class MainFrame {
     private void setInProgress(boolean inProgress) {
         btnExtract.setEnabled(! inProgress);
         btnSelectFolder.setEnabled(! inProgress);
-        btnClearTable.setEnabled(! inProgress);
-        btnRemoveSelected.setEnabled(! inProgress);
-        btnStart.setEnabled(! inProgress);
+        btnStart.setEnabled(!inProgress);
+        btnExtractWzrd.setEnabled(! inProgress);
         btnStop.setEnabled(inProgress);
         ((RecordsTableModel) table.getModel()).setEditable(!inProgress);
     }
 
     public void startProgress(int total) {
-        setInProgress(true);
-        progress.setMaximum(total);
+        if (total > 0) {
+            setInProgress(true);
+            progress.setMaximum(total);
+        }
     }
 
     public void setProgress(int progress) {
-        if (this.progress.getMaximum() == progress) {
+        if (this.progress.getMaximum() <= progress) {
             setInProgress(false);
             this.progress.setValue(0);
         }
@@ -154,8 +149,8 @@ public class MainFrame {
         root.setVisible(true);
     }
 
-    public Component getRootFrame() {
-        return root;
+    public Window getRootFrame() {
+        return root.getOwner();
     }
 
     public void close() {
@@ -175,4 +170,9 @@ public class MainFrame {
         return destination;
     }
 
+    public void stopProgress() {
+        progress.setValue(0);
+        progress.setMaximum(0);
+        setInProgress(false);
+    }
 }

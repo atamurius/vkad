@@ -3,6 +3,7 @@ package ua.atamurius.vk.music;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ua.atamurius.vk.music.mp3.Mp3;
+import ua.atamurius.vk.music.ui.FetchListWizard;
 import ua.atamurius.vk.music.ui.MainFrame;
 import ua.atamurius.vk.music.ui.PageFileChooser;
 
@@ -36,6 +37,7 @@ public class Main {
     private final I18n l = new I18n(getClass());
 
     private MainFrame frame;
+    private FetchListWizard wizard;
     private PageFileChooser chooser;
     private MusicPageParser pageParser = new MusicPageParser();
     private Records records = new Records();
@@ -62,10 +64,15 @@ public class Main {
                                 break;
                             case ACTION_STOP_DOWNLOAD:
                                 downloader.cancel();
+                                frame.stopProgress();
+                                break;
+                            case ACTION_EXTRACT_WIZARD:
+                                wizard.show();
                                 break;
                         }
                     }
                 });
+                wizard = new FetchListWizard(frame.getRootFrame());
                 chooser = new PageFileChooser();
                 frame.show();
             }
