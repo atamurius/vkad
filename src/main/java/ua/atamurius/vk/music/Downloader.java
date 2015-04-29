@@ -1,11 +1,15 @@
 package ua.atamurius.vk.music;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.swing.BoundedRangeModel;
 import javax.swing.DefaultBoundedRangeModel;
@@ -14,7 +18,9 @@ import static java.lang.Thread.currentThread;
 
 public class Downloader {
 
-    public static final int BUFFER_SIZE = 1024 * 1024;
+    private static final Logger log = LoggerFactory.getLogger(Downloader.class);
+
+    public static final int BUFFER_SIZE = 256 * 1024;
 
     public interface ProgressListener {
         void progressChanged(long current, long total);
@@ -22,7 +28,13 @@ public class Downloader {
     }
 
     private final ExecutorService executor = Executors.newFixedThreadPool(5);
-    private final Collection<Future<?>> tasks = new ConcurrentSkipListSet<>();
+    private final Collection<Future<?>> tasks = new ConcurrentLinkedQueue<>();
+
+    private final AtomicInteger tasksFinished = new AtomicInteger();
+
+    public void reset() {
+        tasksFinished.set(0);
+    }
 
     public void download(final String srcUrl, final File dstFile, final ProgressListener listener) {
         tasks.add(executor.submit(new Runnable() {
@@ -31,42 +43,51 @@ public class Downloader {
                 long total = 0;
                 long finished = 0;
                 try {
+                    log.debug("URL: {}", srcUrl);
                     URLConnection conn = new URL(srcUrl).openConnection();
-                    total = conn.getContentLengthLong();
-                    listener.progressChanged(finished, total);
                     try (InputStream input = conn.getInputStream();
                          OutputStream output = new BufferedOutputStream(new FileOutputStream(dstFile))) {
 
-                        System.out.printf("download '%s' started%n", dstFile.getName());
+                        total = conn.getContentLengthLong();
+                        listener.progressChanged(finished, total);
+
+                        log.debug("download '{}' started", dstFile.getName());
                         int lastRead;
                         byte[] buffer = new byte[BUFFER_SIZE];
-                        while (!currentThread().isInterrupted() && (lastRead = input.read(buffer)) > 0) {
+                        while (!currentThread().isInterrupted() && (lastRead = input.read(buffer)) != -1) {
                             output.write(buffer, 0, lastRead);
                             finished += lastRead;
+                            log.trace("{}: {} bytes read ({}/{})", dstFile.getName(), lastRead, finished, total);
                             listener.progressChanged(finished, total);
                         }
-                    } finally {
-                        if (finished < total && dstFile.exists()) {
+                    }
+                    finally {
+                        if ((finished != total || total == 0) && dstFile.exists()) {
+                            log.error("Unsuccessful download, deleting file {}", dstFile);
                             dstFile.delete();
                         }
                     }
                 } catch (Exception e) {
-                    System.err.printf("download '%s' failed%n", dstFile.getName());
-                    e.printStackTrace();
+                    log.error("download '{}' failed", dstFile.getName(), e);
                 }
-                System.out.printf("download '%s' finished at %d/%d%n", dstFile.getName(), finished, total);
-                listener.finished(finished == total);
+                log.debug("download '{}' finished at {}/{}", dstFile.getName(), finished, total);
+                tasksFinished.incrementAndGet();
+                listener.finished(finished == total && total > 0);
             }
         }));
     }
 
     public int getActiveTaskCount() {
+        int count = 0;
         for (Iterator<Future<?>> futures = tasks.iterator(); futures.hasNext(); ) {
             if (futures.next().isDone()) {
                 futures.remove();
             }
+            else {
+                count++;
+            }
         }
-        return tasks.size();
+        return count;
     }
 
     public void cancel() {
@@ -77,8 +98,12 @@ public class Downloader {
         do {
             Thread.yield();
             active = getActiveTaskCount();
-            System.out.printf("Active tasks: %d%n", active);
+            log.debug("Active tasks: {}", active);
         }
         while (active > 0);
+    }
+
+    public int getFinishedTasksCount() {
+        return tasksFinished.get();
     }
 }

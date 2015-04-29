@@ -27,19 +27,29 @@ public class ItemProgressRenderer extends DefaultTableCellRenderer {
             int row,
             int column) {
 
-        Integer status = ((Records.Item) value).getProgress();
-        if (status == null || status == -1) {
-            return super.getTableCellRendererComponent(
-                    table,
-                    l.l(status == null ? "table.download.not_started" : "table.download.error"),
-                    isSelected,
-                    hasFocus,
-                    row,
-                    column);
-        }
-        else {
-            progress.setValue(status);
+        String text = null;
+        Records.Item item = (Records.Item) value;
+        switch (item.getStatus()) {
+        case IN_PROGRESS:
+            progress.setValue(item.getProgress());
             return progress;
+        case ERROR:
+            text = "table.download.error";
+            break;
+        case SUCCESS:
+            text = "table.download.success";
+            break;
+        case WAITING:
+            text = "table.download.not_started";
+            break;
         }
+        return super.getTableCellRendererComponent(
+                table,
+                l.l(text),
+                isSelected,
+                hasFocus,
+                row,
+                column);
+
     }
 }

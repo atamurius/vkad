@@ -1,16 +1,21 @@
 package ua.atamurius.vk.music;
 
+import java.io.File;
 import java.util.*;
 
 import static java.util.Collections.unmodifiableList;
 
 public class Records extends Observable implements Iterable<Records.Item> {
 
+    public enum Status { WAITING, IN_PROGRESS, ERROR, SUCCESS }
+
     public class Item {
         private String title;
         private String author;
+        private String album;
         private String url;
-        private Integer progress;
+        private int progress;
+        private Status status = Status.WAITING;
 
         private Item(String title, String author, String url) {
             this.title = title;
@@ -40,6 +45,15 @@ public class Records extends Observable implements Iterable<Records.Item> {
             return url;
         }
 
+        public String getAlbum() {
+            return album;
+        }
+
+        public void setAlbum(String album) {
+            this.album = album;
+            setChanged();
+        }
+
         public String getFileName() {
             int p = url.lastIndexOf('.');
             int e = url.lastIndexOf('?');
@@ -47,14 +61,20 @@ public class Records extends Observable implements Iterable<Records.Item> {
             return (author + " - " + title + ext).replaceAll("[\u0000-\u001F\\*/:<>\\?\\\\|]+", "");
         }
 
-        /**
-         * @return null if not started, 0-100 for download progress, -1 if failed, 100 if success
-         */
-        public Integer getProgress() {
+        public int getProgress() {
             return progress;
         }
 
-        public void setProgress(Integer progress) {
+        public Status getStatus() {
+            return status;
+        }
+
+        public void setStatus(Status status) {
+            this.status = status;
+            setChanged();
+        }
+
+        public void setProgress(int progress) {
             this.progress = progress;
             setChanged();
         }

@@ -4,6 +4,7 @@ import ua.atamurius.vk.music.I18n;
 import ua.atamurius.vk.music.Records;
 
 import javax.swing.*;
+import javax.swing.table.TableModel;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -11,6 +12,7 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 
 import static java.awt.BorderLayout.*;
@@ -114,27 +116,38 @@ public class MainFrame {
         setInProgress(false);
     }
 
-    private void removeSelected() {/*
-        int inds =
-        for (int row: table.getSelectedRows()) {
-            items.add( records table.convertRowIndexToModel(row));
+    private void removeSelected() {
+        int[] selectedRows = table.getSelectedRows();
+        int[] inds = new int[selectedRows.length];
+        for (int i = 0; i < selectedRows.length; i++) {
+            inds[i] = table.convertRowIndexToModel(selectedRows[i]);
         }
-        Arrays.so
-        for (int i : selectedRows)
-            records.remove(i);
-        records.notifyObservers();
-*/
+        ((RecordsTableModel) table.getModel()).remove(inds);
     }
 
-    public void setInProgress(boolean inProgress) {
+    private void setInProgress(boolean inProgress) {
         btnExtract.setEnabled(! inProgress);
         btnSelectFolder.setEnabled(! inProgress);
         btnClearTable.setEnabled(! inProgress);
         btnRemoveSelected.setEnabled(! inProgress);
         btnStart.setEnabled(! inProgress);
         btnStop.setEnabled(inProgress);
-        ((RecordsTableModel) table.getModel()).setEditable(! inProgress);
-        progress.setValue(0);
+        ((RecordsTableModel) table.getModel()).setEditable(!inProgress);
+    }
+
+    public void startProgress(int total) {
+        setInProgress(true);
+        progress.setMaximum(total);
+    }
+
+    public void setProgress(int progress) {
+        if (this.progress.getMaximum() == progress) {
+            setInProgress(false);
+            this.progress.setValue(0);
+        }
+        else {
+            this.progress.setValue(progress);
+        }
     }
 
     public void show() {
@@ -162,10 +175,4 @@ public class MainFrame {
         return destination;
     }
 
-    public void increaseProgress() {
-        progress.setValue( progress.getValue() + 1 );
-        if (progress.getValue() == progress.getMaximum()) {
-            setInProgress(false);
-        }
-    }
 }

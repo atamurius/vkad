@@ -34,7 +34,7 @@ public class RecordsTableModel extends AbstractTableModel {
     }
 
     public int getColumnCount() {
-        return 4;
+        return 5;
     }
 
     public String getColumnName(int columnIndex) {
@@ -42,7 +42,8 @@ public class RecordsTableModel extends AbstractTableModel {
         case 0: return l.l("table.column.no");
         case 1: return l.l("table.column.author");
         case 2: return l.l("table.column.title");
-        case 3: return l.l("table.column.progress");
+        case 3: return l.l("table.column.album");
+        case 4: return l.l("table.column.progress");
         }
         throw new IndexOutOfBoundsException(columnIndex +" not in [0,1]");
     }
@@ -51,8 +52,9 @@ public class RecordsTableModel extends AbstractTableModel {
         switch (columnIndex) {
             case 0: return Integer.class;
             case 1:
-            case 2: return String.class;
-            case 3: return Records.Item.class;
+            case 2:
+            case 3: return String.class;
+            case 4: return Records.Item.class;
             default:
                 throw new IndexOutOfBoundsException(columnIndex +" not in [0,3]");
         }
@@ -63,7 +65,8 @@ public class RecordsTableModel extends AbstractTableModel {
         case 0: return (rowIndex + 1);
         case 1: return items.get(rowIndex).getAuthor();
         case 2: return items.get(rowIndex).getTitle();
-        case 3: return items.get(rowIndex);
+        case 3: return items.get(rowIndex).getAlbum();
+        case 4: return items.get(rowIndex);
         default:
             throw new IndexOutOfBoundsException(columnIndex +" not in [0,3]");
         }
@@ -71,7 +74,7 @@ public class RecordsTableModel extends AbstractTableModel {
     
     @Override
     public boolean isCellEditable(int rowIndex, int columnIndex) {
-        return isEditable && columnIndex > 0 && columnIndex < 3;
+        return isEditable && columnIndex > 0 && columnIndex < 4;
     }
     
     @Override
@@ -85,8 +88,20 @@ public class RecordsTableModel extends AbstractTableModel {
             items.get(rowIndex).setTitle(aValue.toString());
             items.notifyObservers();
             break;
+        case 3:
+            items.get(rowIndex).setAlbum(aValue.toString());
+            items.notifyObservers();
+            break;
         default:
             throw new IndexOutOfBoundsException(columnIndex +" not in [1,2]");
         }
+    }
+
+    public void remove(int[] inds) {
+        Arrays.sort(inds);
+        for (int i = inds.length - 1; i >= 0; i--) {
+            items.remove(inds[i]);
+        }
+        items.notifyObservers();
     }
 }

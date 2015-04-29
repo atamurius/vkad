@@ -1,5 +1,8 @@
 package ua.atamurius.vk.music;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import ua.atamurius.vk.music.mp3.Mp3;
 import ua.atamurius.vk.music.ui.MainFrame;
 import ua.atamurius.vk.music.ui.PageFileChooser;
 
@@ -15,9 +18,17 @@ import javax.swing.*;
 
 public class Main {
 
-    public static void main(String[] args) throws Exception {
-        UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-        new Main().createUI();
+    private static final Logger log = LoggerFactory.getLogger(Main.class);
+
+    public static void main(String[] args) {
+        try {
+            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+            new Main().createUI();
+        }
+        catch (Exception e) {
+            log.error("Cannot start app", e);
+            showMessageDialog(null, "Cannot start: " + e.getLocalizedMessage());
+        }
     }
 
     private Downloader downloader = new Downloader();
@@ -42,6 +53,7 @@ public class Main {
                                     loadLinks(file);
                                 break;
                             case ACTION_WINDOW_CLOSING:
+                                downloader.cancel();
                                 frame.close();
                                 System.exit(0);
                                 break;
@@ -61,27 +73,46 @@ public class Main {
     }
 
     private void downloadRecords() {
-        frame.setInProgress(true);
+        frame.startProgress(records.size());
+        downloader.reset();
         File destination = frame.getDestination();
         for (final Records.Item item : records) {
-            downloader.download(
-                    item.getUrl(),
-                    new File(destination, item.getFileName()),
+            item.setStatus(Records.Status.WAITING);
+            final File file = new File(destination, item.getFileName());
+            downloader.download(item.getUrl(), file,
                     new Downloader.ProgressListener() {
                         @Override
                         public void progressChanged(long current, long total) {
+                            item.setStatus(Records.Status.IN_PROGRESS);
                             item.setProgress((int)(current * 100 / total));
                             records.notifyObservers();
                         }
 
                         @Override
                         public void finished(boolean success) {
-                            item.setProgress(success ? 100 : null);
+                            item.setStatus(success ? Records.Status.SUCCESS : Records.Status.ERROR);
                             records.notifyObservers();
-
-                            frame.increaseProgress();
+                            frame.setProgress(downloader.getFinishedTasksCount());
+                            if (success) {
+                                writeMetaData(file, item);
+                            }
                         }
                     });
+        }
+    }
+
+    private void writeMetaData(File file, Records.Item item) {
+        try {
+            Mp3 mp3 = new Mp3(file);
+            mp3.setTitle(item.getTitle());
+            mp3.setArtist(item.getAuthor());
+            if (item.getAlbum() != null) {
+                mp3.setAlbum(item.getAlbum());
+            }
+            mp3.close();
+        }
+        catch (Exception e) {
+            log.error("Cannot write tag to {}", file, e);
         }
     }
 
