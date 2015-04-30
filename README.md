@@ -3,6 +3,8 @@
 2. Scroll to see all of them (they are lazy loading)
 3. Save page as HTML
 4. Open it in app
+ 
+[Download 1.0.0 version](builds/vkad-1.0.0.jar?raw=true)
 
 ## Configuration
 Download threads could be configured using system property
