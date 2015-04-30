@@ -7,3 +7,9 @@
 ## Configuration
 Download threads could be configured using system property
 `ua.atamurius.vk.music.Downloader.threads`
+
+## Build
+Default maven profile build JAR without dependencies with debug output to stdout.
+To build executable JAR use `production` profile.
+
+`mvn -P production` builds executable JAR and places it to `builds`
