@@ -23,11 +23,12 @@ public class Downloader {
     public static final int BUFFER_SIZE = 256 * 1024;
 
     public interface ProgressListener {
-        void progressChanged(long current, long total);
-        void finished(boolean success);
+        void progress(long current, long total);
+        void success();
+        boolean failed();
     }
 
-    private final ExecutorService executor = Executors.newFixedThreadPool(threadCount());
+    private ExecutorService executor;
 
     private static int threadCount() {
         String threads = System.getProperty(Downloader.class.getName() +".threads");
@@ -42,76 +43,75 @@ public class Downloader {
         return 10; // by default
     }
 
-    private final Queue<Future<?>> tasks = new ConcurrentLinkedQueue<>();
+    private class Task implements Runnable {
 
-    private final AtomicInteger tasksFinished = new AtomicInteger();
+        final String url;
+        final File file;
+        final ProgressListener listener;
 
-    public void reset() {
-        tasksFinished.set(0);
+        public Task(String url, File file, ProgressListener listener) {
+            this.url = url;
+            this.file = file;
+            this.listener = listener;
+        }
+
+        @Override
+        public void run() {
+            boolean success = false;
+            try {
+                log.debug("download started: {} -> {}", url, file);
+                success = download();
+                if (! success && file.exists()) {
+                    file.delete();
+                }
+                log.debug("download {} {}", file.getName(), success ? "successful" : "broken");
+            }
+            catch (Exception e) {
+                log.error("download {} failed", file.getName(), e);
+            }
+            if (success) {
+                listener.success();
+            }
+            else {
+                if (listener.failed()) {
+                    executor.submit(this);
+                }
+            }
+        }
+
+        boolean download() throws IOException {
+            long total;
+            long finished = 0;
+            URLConnection conn = new URL(url).openConnection();
+            try (InputStream input = conn.getInputStream();
+                 OutputStream output = new BufferedOutputStream(new FileOutputStream(file))) {
+
+                total = conn.getContentLengthLong();
+                listener.progress(finished, total);
+
+                int lastRead;
+                byte[] buffer = new byte[BUFFER_SIZE];
+                while (!currentThread().isInterrupted() && (lastRead = input.read(buffer)) != -1) {
+                    output.write(buffer, 0, lastRead);
+                    finished += lastRead;
+                    log.trace("{}: {} bytes read ({}/{})", file.getName(), lastRead, finished, total);
+                    listener.progress(finished, total);
+                }
+            }
+            return (finished == total && total > 0);
+        }
     }
 
     public void download(final String srcUrl, final File dstFile, final ProgressListener listener) {
-        tasks.add(executor.submit(new Runnable() {
-            @Override
-            public void run() {
-                long total = 0;
-                long finished = 0;
-                try {
-                    log.debug("URL: {}", srcUrl);
-                    URLConnection conn = new URL(srcUrl).openConnection();
-                    try (InputStream input = conn.getInputStream();
-                         OutputStream output = new BufferedOutputStream(new FileOutputStream(dstFile))) {
-
-                        total = conn.getContentLengthLong();
-                        listener.progressChanged(finished, total);
-
-                        log.debug("download '{}' started", dstFile.getName());
-                        int lastRead;
-                        byte[] buffer = new byte[BUFFER_SIZE];
-                        while (!currentThread().isInterrupted() && (lastRead = input.read(buffer)) != -1) {
-                            output.write(buffer, 0, lastRead);
-                            finished += lastRead;
-                            log.trace("{}: {} bytes read ({}/{})", dstFile.getName(), lastRead, finished, total);
-                            listener.progressChanged(finished, total);
-                        }
-                    }
-                    finally {
-                        if ((finished != total || total == 0) && dstFile.exists()) {
-                            log.error("Unsuccessful download, deleting file {}", dstFile);
-                            dstFile.delete();
-                        }
-                    }
-                } catch (Exception e) {
-                    log.error("download '{}' failed", dstFile.getName(), e);
-                }
-                log.debug("download '{}' finished at {}/{}", dstFile.getName(), finished, total);
-                tasksFinished.incrementAndGet();
-                listener.finished(finished == total && total > 0);
-            }
-        }));
-    }
-
-    public int getActiveTaskCount() {
-        int count = 0;
-        for (Iterator<Future<?>> futures = tasks.iterator(); futures.hasNext(); ) {
-            if (futures.next().isDone()) {
-                futures.remove();
-            }
-            else {
-                count++;
-            }
+        if (executor == null || executor.isShutdown()) {
+           executor = Executors.newFixedThreadPool(threadCount());
         }
-        return count;
+        executor.submit(new Task(srcUrl, dstFile, listener));
     }
 
     public void cancel() {
-        for (Future<?> future : tasks) {
-            future.cancel(true);
+        if (executor != null) {
+            executor.shutdownNow();
         }
-        tasks.clear();
-    }
-
-    public int getFinishedTasksCount() {
-        return tasksFinished.get();
     }
 }

@@ -82,19 +82,17 @@ public class RecordsTableModel extends AbstractTableModel {
         switch (columnIndex) {
         case 1:
             items.get(rowIndex).setAuthor(aValue.toString());
-            items.notifyObservers();
             break;
         case 2:
             items.get(rowIndex).setTitle(aValue.toString());
-            items.notifyObservers();
             break;
         case 3:
             items.get(rowIndex).setAlbum(aValue.toString());
-            items.notifyObservers();
             break;
         default:
             throw new IndexOutOfBoundsException(columnIndex +" not in [1,2]");
         }
+        items.notifyObservers();
     }
 
     public void remove(int[] inds) {

@@ -4,8 +4,19 @@ import java.io.File;
 import java.util.*;
 
 import static java.util.Collections.unmodifiableList;
+import static ua.atamurius.vk.music.Records.Status.IN_PROGRESS;
 
 public class Records extends Observable implements Iterable<Records.Item> {
+
+    public static final Comparator<Item> BY_STATUS_COMPARATOR = new Comparator<Records.Item>() {
+        @Override
+        public int compare(Records.Item o1, Records.Item o2) {
+            int order = o1.getStatus().compareTo(o2.getStatus());
+            return (order == 0 && o1.getStatus() == IN_PROGRESS) ?
+                    o1.getProgress() - o2.getProgress() :
+                    order;
+        }
+    };
 
     public enum Status { WAITING, IN_PROGRESS, ERROR, SUCCESS }
 
@@ -28,8 +39,10 @@ public class Records extends Observable implements Iterable<Records.Item> {
         }
 
         public void setAuthor(String author) {
-            this.author = author;
-            setChanged();
+            if (! Objects.equals(this.author, author)) {
+                this.author = author;
+                setChanged();
+            }
         }
 
         public String getTitle() {
@@ -37,8 +50,10 @@ public class Records extends Observable implements Iterable<Records.Item> {
         }
 
         public void setTitle(String title) {
-            this.title = title;
-            setChanged();
+            if (! Objects.equals(this.title, title)) {
+                this.title = title;
+                setChanged();
+            }
         }
 
         public String getUrl() {
@@ -50,8 +65,10 @@ public class Records extends Observable implements Iterable<Records.Item> {
         }
 
         public void setAlbum(String album) {
-            this.album = album;
-            setChanged();
+            if (! Objects.equals(this.album, album)) {
+                this.album = album;
+                setChanged();
+            }
         }
 
         public String getFileName() {
@@ -75,8 +92,10 @@ public class Records extends Observable implements Iterable<Records.Item> {
         }
 
         public void setProgress(int progress) {
-            this.progress = progress;
-            setChanged();
+            if (this.progress != progress) {
+                this.progress = progress;
+                setChanged();
+            }
         }
 
         @Override
@@ -111,10 +130,5 @@ public class Records extends Observable implements Iterable<Records.Item> {
 
     public Item get(int index) {
         return items.get(index);
-    }
-
-    public void clear() {
-        items.clear();
-        setChanged();
     }
 }

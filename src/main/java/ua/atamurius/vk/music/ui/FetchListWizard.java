@@ -8,26 +8,34 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Objects;
 
 import static java.awt.Dialog.ModalityType.APPLICATION_MODAL;
 import static java.awt.FlowLayout.TRAILING;
 import static java.awt.Font.PLAIN;
+import static java.util.Objects.requireNonNull;
 
 public class FetchListWizard {
 
+    public static final String ACTION_JSON_COPIED = "json_copied";
+
     private final I18n l = new I18n(FetchListWizard.class);
     private final JDialog root;
+    private final ActionListener listener;
 
     private boolean showingJS = true;
     private JLabel message;
     private JTextArea text;
 
-    public FetchListWizard(final Window owner) {
+    public FetchListWizard(final Window owner, ActionListener listener) {
+        this.listener = requireNonNull(listener);
         root = new JDialog(owner, l.l("wizard.title"), APPLICATION_MODAL) {{
             setLayout(new GridBagLayout());
+            final JRootPane rootPane = getRootPane();
             add(message = new JLabel(), constraints(0, 0, 5));
             add(new JScrollPane(text = new JTextArea() {{
                 setFont(new Font("monospace", PLAIN, getFont().getSize()));
+                setLineWrap(true);
             }}), constraints(0, 1, 15));
             add(new JPanel(new FlowLayout(TRAILING)) {{
                 add(new JButton(l.l("wizard.cancel")) {{
@@ -39,6 +47,7 @@ public class FetchListWizard {
                     });
                 }});
                 add(new JButton(l.l("wizard.proceed")) {{
+                    rootPane.setDefaultButton(this);
                     addActionListener(new ActionListener() {
                         @Override
                         public void actionPerformed(ActionEvent actionEvent) {
@@ -69,9 +78,10 @@ public class FetchListWizard {
             message.setText(l.l("wizard.copy_json_message"));
             text.setEditable(true);
             text.setText("");
+            showingJS = false;
         }
         else {
-            // TODO
+            listener.actionPerformed(new ActionEvent(this, 0, ACTION_JSON_COPIED));
         }
     }
 
@@ -98,5 +108,13 @@ public class FetchListWizard {
         catch (IOException e) {
             throw new RuntimeException("Cannot read "+ name, e);
         }
+    }
+
+    public String getInputData() {
+        return text.getText();
+    }
+
+    public void hide() {
+        root.setVisible(false);
     }
 }

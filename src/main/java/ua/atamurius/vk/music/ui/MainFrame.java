@@ -11,12 +11,14 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Comparator;
 
 import static java.awt.BorderLayout.*;
 import static java.awt.FlowLayout.LEADING;
 import static java.awt.event.KeyEvent.VK_DELETE;
 import static javax.swing.JFileChooser.APPROVE_OPTION;
 import static javax.swing.JFileChooser.DIRECTORIES_ONLY;
+import static ua.atamurius.vk.music.Records.Status.IN_PROGRESS;
 
 public class MainFrame {
 
@@ -65,17 +67,19 @@ public class MainFrame {
                 }});
             }}, PAGE_START);
 
-            add(new JScrollPane(table = new JTable() {{
-                setModel(new RecordsTableModel(records));
-                setDefaultRenderer(Records.Item.class, new ItemProgressRenderer());
-                setGridColor(Color.lightGray);
-                setIntercellSpacing(new Dimension(7,3));
-                setAutoCreateRowSorter(true);
-                getColumnModel().getColumn(0).setMaxWidth(40);
-                addKeyListener(new KeyAdapter() {
+            table = new JTable();
+            {
+                table.setModel(new RecordsTableModel(records));
+                table.setDefaultRenderer(Records.Item.class, new ItemProgressRenderer());
+                table.setGridColor(Color.lightGray);
+                table.setIntercellSpacing(new Dimension(7, 3));
+                table.setAutoCreateRowSorter(true);
+                table.getColumnModel().getColumn(0).setMaxWidth(40);
+                ((DefaultRowSorter<?, ?>) table.getRowSorter()).setComparator(4, Records.BY_STATUS_COMPARATOR);
+                table.addKeyListener(new KeyAdapter() {
                     @Override
                     public void keyReleased(KeyEvent e) {
-                        if (e.getKeyCode() == VK_DELETE && ! e.isConsumed()) {
+                        if (e.getKeyCode() == VK_DELETE && !e.isConsumed()) {
                             if (table.isEditing()) {
                                 table.getCellEditor().cancelCellEditing();
                             }
@@ -84,7 +88,9 @@ public class MainFrame {
                         }
                     }
                 });
-            }}));
+
+                add(new JScrollPane(table));
+            }
 
             add(new JPanel(new BorderLayout()) {{
                 add(progress = new JProgressBar());
